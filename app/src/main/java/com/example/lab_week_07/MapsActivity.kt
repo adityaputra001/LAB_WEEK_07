@@ -2,6 +2,7 @@ package com.example.lab_week_07
 
 import android.Manifest.permission.ACCESS_FINE_LOCATION
 import android.content.pm.PackageManager
+import android.location.Location
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.result.ActivityResultLauncher
@@ -9,7 +10,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-
+import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
@@ -23,23 +24,25 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
     private lateinit var mMap: GoogleMap
     private lateinit var binding: ActivityMapsBinding
 
-    // ✅ Step 14: ActivityResultLauncher untuk request permission
+    // Permission launcher
     private lateinit var requestPermissionLauncher: ActivityResultLauncher<String>
+
+    // ✅ Step 13: FusedLocationProviderClient untuk ambil lokasi terakhir
+    private val fusedLocationProviderClient by lazy {
+        LocationServices.getFusedLocationProviderClient(this)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         binding = ActivityMapsBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // ✅ Step 15: Register permission launcher
+        // Permission launcher
         requestPermissionLauncher =
             registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
                 if (isGranted) {
-                    // Jika izin diberikan
                     getLastLocation()
                 } else {
-                    // Jika izin ditolak, tampilkan dialog alasan (rationale)
                     showPermissionRationale {
                         requestPermissionLauncher.launch(ACCESS_FINE_LOCATION)
                     }
@@ -52,37 +55,54 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         mapFragment.getMapAsync(this)
     }
 
-    // ✅ Step 17: Cek apakah izin lokasi sudah diberikan
+    // Check permission
     private fun hasLocationPermission() =
         ContextCompat.checkSelfPermission(this, ACCESS_FINE_LOCATION) ==
                 PackageManager.PERMISSION_GRANTED
 
-    // ✅ Step 16: Menampilkan rationale dialog jika izin ditolak
+    // Rationale dialog
     private fun showPermissionRationale(positiveAction: () -> Unit) {
         AlertDialog.Builder(this)
             .setTitle("Location permission")
             .setMessage("This app will not work without knowing your current location")
             .setPositiveButton(android.R.string.ok) { _, _ -> positiveAction() }
             .setNegativeButton(android.R.string.cancel) { dialog, _ -> dialog.dismiss() }
-            .create()
-            .show()
+            .create().show()
     }
 
-    // ✅ Step 12: Dipanggil ketika izin sudah diberikan
+    // ✅ Step 15: Update getLastLocation untuk tampilkan lokasi pengguna
     private fun getLastLocation() {
-        Log.d("MapsActivity", "getLastLocation() called.")
+        if (hasLocationPermission()) {
+            try {
+                fusedLocationProviderClient.lastLocation
+                    .addOnSuccessListener { location: Location? ->
+                        location?.let {
+                            val userLocation = LatLng(it.latitude, it.longitude)
+                            updateMapLocation(userLocation)
+                            addMarkerAtLocation(userLocation, "You")
+                        }
+                    }
+            } catch (e: SecurityException) {
+                Log.e("MapsActivity", "SecurityException: ${e.message}")
+            }
+        } else {
+            requestPermissionLauncher.launch(ACCESS_FINE_LOCATION)
+        }
     }
 
-    // ✅ Step 18: Update onMapReady untuk minta izin lokasi
+    // ✅ Step 14: Update map location & add marker
+    private fun updateMapLocation(location: LatLng) {
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(location, 15f))
+    }
+
+    private fun addMarkerAtLocation(location: LatLng, title: String) {
+        mMap.addMarker(MarkerOptions().title(title).position(location))
+    }
+
+    // Update map permission check
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
 
-        // Tambahkan marker default
-        val sydney = LatLng(-34.0, 151.0)
-        mMap.addMarker(MarkerOptions().position(sydney).title("Marker in Sydney"))
-        mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney))
-
-        // Cek permission sebelum ambil lokasi
         when {
             hasLocationPermission() -> getLastLocation()
             shouldShowRequestPermissionRationale(ACCESS_FINE_LOCATION) -> {
