@@ -19,27 +19,14 @@ android {
     }
 
     buildTypes {
-        debug {
-            buildConfigField(
-                "String",
-                "MAPS_API_KEY",
-                "\"${project.findProperty("MAPS_API_KEY") ?: ""}\""
-            )
-        }
         release {
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            buildConfigField(
-                "String",
-                "MAPS_API_KEY",
-                "\"${project.findProperty("MAPS_API_KEY") ?: ""}\""
-            )
         }
     }
-
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11

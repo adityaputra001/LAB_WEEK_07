@@ -27,7 +27,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
     // Permission launcher
     private lateinit var requestPermissionLauncher: ActivityResultLauncher<String>
 
-    // ✅ Step 13: FusedLocationProviderClient untuk ambil lokasi terakhir
     private val fusedLocationProviderClient by lazy {
         LocationServices.getFusedLocationProviderClient(this)
     }
